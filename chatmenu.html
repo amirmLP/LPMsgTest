@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+   <meta name="viewport" content="user-scalable=0, width=device-width, initial-scale=1.0,  minimum-scale=1.0, maximum-scale=1.0" />
+   <meta charset="UTF-8">
+<!-- BEGIN LivePerson Monitor. -->
+<script type="text/javascript">window.lpTag=window.lpTag||{},'undefined'==typeof window.lpTag._tagCount?(window.lpTag={wl:lpTag.wl||null,scp:lpTag.scp||null,site:'21463023'||'',section:lpTag.section||'',tagletSection:lpTag.tagletSection||null,autoStart:lpTag.autoStart!==!1,ovr:lpTag.ovr||{},_v:'1.10.0',_tagCount:1,protocol:'https:',events:{bind:function(t,e,i){lpTag.defer(function(){lpTag.events.bind(t,e,i)},0)},trigger:function(t,e,i){lpTag.defer(function(){lpTag.events.trigger(t,e,i)},1)}},defer:function(t,e){0===e?(this._defB=this._defB||[],this._defB.push(t)):1===e?(this._defT=this._defT||[],this._defT.push(t)):(this._defL=this._defL||[],this._defL.push(t))},load:function(t,e,i){var n=this;setTimeout(function(){n._load(t,e,i)},0)},_load:function(t,e,i){var n=t;t||(n=this.protocol+'//'+(this.ovr&&this.ovr.domain?this.ovr.domain:'lptag.liveperson.net')+'/tag/tag.js?site='+this.site);var o=document.createElement('script');o.setAttribute('charset',e?e:'UTF-8'),i&&o.setAttribute('id',i),o.setAttribute('src',n),document.getElementsByTagName('head').item(0).appendChild(o)},init:function(){this._timing=this._timing||{},this._timing.start=(new Date).getTime();var t=this;window.attachEvent?window.attachEvent('onload',function(){t._domReady('domReady')}):(window.addEventListener('DOMContentLoaded',function(){t._domReady('contReady')},!1),window.addEventListener('load',function(){t._domReady('domReady')},!1)),'undefined'===typeof window._lptStop&&this.load()},start:function(){this.autoStart=!0},_domReady:function(t){this.isDom||(this.isDom=!0,this.events.trigger('LPT','DOM_READY',{t:t})),this._timing[t]=(new Date).getTime()},vars:lpTag.vars||[],dbs:lpTag.dbs||[],ctn:lpTag.ctn||[],sdes:lpTag.sdes||[],hooks:lpTag.hooks||[],identities:lpTag.identities||[],ev:lpTag.ev||[]},lpTag.init()):window.lpTag._tagCount+=1;</script>
+<!-- END LivePerson Monitor. -->
+<script type="text/javascript">
+// Creating a subspace within lpTag to be used for keeping the engagement ID and state. 
+// Engagement ID is the unique identifier given to a particular chat button. 
+// Engagement state is a numerical value that signifies the state of the chat button. 1 = online, 2 = offline, 4 = busy.
+// These two variables will be assigned a value further down the code. The ID won't change but the state may change based on agent
+// availability. I've configured this specific chat button to refresh its state automatically every 30 seconds.
+// Note: Chat button state refresh can take place up to 10 times per page load. Whatever the state is on the 10th refresh will remain
+// as the active state of the button until the page is reloaded.
+lpTag.lloyds = {};
+
+// Simple function for expanding/collapsing the accordion menu
+function accordionSwitch(){
+   var webChatMenu = document.getElementById('webChatMenu');
+   if(webChatMenu.style.display === 'none'){
+      webChatMenu.style.display = 'block';
+   } else if(webChatMenu.style.display === 'block'){
+      webChatMenu.style.display = 'none';
+   }   
+};
+
+// Simple function for showing/hiding the custom chat button within the expanded accordion menu
+function chatButtonSwitch(){
+   var chatButton = document.getElementById('chatButton');
+   if(chatButton.style.display === 'none'){
+      chatButton.style.display = 'block';
+   }else if(chatButton.style.display === 'block'){
+      chatButton.style.display = 'none';
+   }
+};
+
+// This function checks for the engagement type. The type is a numerical value given to any engagement when creating it.
+// Available values: 0: "Peeling corner", 1: "Overlay", 2: "Toaster", 3: "Slide-out", 5: "Embedded", 6: "Sticky"
+// Once it determines that the engagement in question is an "embedded" engagement (which is the type we want to use for this
+// sort of deployment), it sets two variables (engagement ID and state) with the values coming from the server.
+// Based on the data coming from the server, the function also changes the text content for the text at the top of the accordion
+// menu and hides/shows the custom chat button.
+function updateEngagement(data){
+   if(data.engagementType === 5){   
+      var chatStateText = document.getElementById('chatStateText');
+      var chatButton = document.getElementById('chatButton');
+      lpTag.lloyds.engagementId = data.engagementId;
+      lpTag.lloyds.engagementState = data.state;
+      if(!data.prevState && data.state === 1 && chatButton.style.display === 'none'){
+         chatStateText.textContent = 'Our team is ready to answer your questions.';
+         chatButtonSwitch();
+      }else if (!data.prevState && (data.state === 2 || data.state === 4) && chatButton.style.display === 'block'){
+         chatStateText.textContent = 'Unfortunately Webchat is unavailable at this time.';
+         chatButtonSwitch();
+      }else if(data.prevState && data.state === 1 && chatButton.style.display === 'none'){
+         chatStateText.textContent = 'Our team is ready to answer your questions.';
+         chatButtonSwitch();
+      }else if (data.prevState && (data.state === 2 || data.state === 4) && chatButton.style.display === 'block'){
+         chatStateText.textContent = 'Unfortunately Webchat is unavailable at this time.';
+         chatButtonSwitch();
+      }
+   }
+}
+
+// This code adds the previous function to the lpTag.events array by "binding" it to a specific event that takes place in the 
+// lifecycle of a tagged page load. This event is called "OFFER_IMPRESSION" which basically means that a chat button has rendered
+// on the page (regardless of its state or whether it is actually visible on the page).
+// For more information about event binding, please see this document: https://developers.liveperson.com/le-tag-events-event-binding.html
+lpTag.events.bind({
+    eventName : "OFFER_IMPRESSION",
+    appName : "LP_OFFERS",
+    func: updateEngagement,
+    async: true, //default is false,
+    triggerOnce : false //default is false
+    });
+
+// This function programatically clicks a chat button. It takes an engagement ID as its single argument. For this to work, the 
+// engagement of that ID has to be present on the page.
+// For more information about this method, please see the documentation regarding the "Engagement Trigger API":
+// https://developers.liveperson.com/engagement-trigger-api-overview.html 
+function chatClick(engId){
+   lpTag.taglets.rendererStub.click(engId);
+}
+</script>
+
+</head>
+<style>
+.accordion {
+  background-color: #0040bb;
+  color: #fff;
+  cursor: pointer;
+  font-size: 1.25rem;
+  font-weight: 700;
+  padding: 18px;
+  width: 300px;
+  text-align: center;
+  border: none;
+  outline: none;
+  transition: 0.4s;
+}
+.chatButton {
+  background-color: #0040bb;
+  color: #fff;
+  cursor: pointer;
+  font-size: 1.25rem;
+  font-weight: 700;
+  padding: 18px;
+  width: 250px;
+  text-align: center;
+  border: none;
+  outline: none;
+  transition: 0.4s;
+}
+</style>
+<body>
+<button class="accordion" id="webchatButton" onclick="accordionSwitch()">WEBCHAT</button>
+<div id="LP_DIV_1570113597325" style="display: none;"></div>
+<div id="webChatMenu" style="display: none">
+   <div id="chatMenuTop">
+      <strong>Live web chat</strong>
+   </div>
+   <div>
+      <span id="chatStateText">Unfortunately Webchat is unavailable at this time.</span>
+   </div>
+   <div id="chatMenuExplainer">
+      <strong>We can help you with:</strong>
+      <ul>
+         <li>Filling out your application</li>
+         <li>Clarifying any financial jargon</li>
+         <li>Understanding the soft credit check</li>
+      </ul>
+   </div>
+   <div>
+      <button class="chatButton" id="chatButton" style="display: none" onclick="chatClick(lpTag.lloyds.engagementId)">Start Webchat</button>
+   </div>   
+</div>
+</body>
+</html>
